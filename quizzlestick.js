@@ -67,7 +67,7 @@
 					
 					
 					// create markup
-					quiz.html( config.wrap );
+					quiz.html( config.templates.wrap );
 					
 					
 					return quiz;
@@ -190,11 +190,51 @@
 		
 		// html output for quiz elements
 		templates: {
-			wrap: '',
-			timerstart: '',
-			result: '',
-			question: '',
-			answer: '',
+			wrap: '\
+				<div class="quizzlestick">\
+					{{templates.description}}\
+					{{templates.timerstart}}\
+					{{templates.questions}}\
+					{{templates.result}}\
+				</div>\
+			',
+			description: '\
+				<div class="quizzlestick-description">\
+					{{description}}\
+				</div>\
+			',
+			timerstart: '\
+				<div class="quizzlestick-timer">\
+					<span class="quizzlestick-timer-time">0:00</span>\
+					<div class="quizzlestick-timer-progress">\
+						<div class="quizzlestick-timer-progress-bar"></div>\
+					</div>\
+				</div>\
+			',
+			result: '\
+				<div class="quizzlestick-result">\
+					{{result}}\
+				</div>',
+			questions: '\
+				<ul class="quizzlestick-questions">\
+					{{questions}}\
+				</ul>\
+			',
+			question: '\
+				<li class="quizzlestick-question">\
+					{{question}}\
+				</li>\
+			',
+			answers: '\
+				<ul class="quizzlestick-answers">\
+					{{answers}}\
+				</ul>\
+			',
+			answer: '\
+				<li class="quizzlestick-answer">\
+					{{answer}}\
+				</li>\
+			',
 			correct: '',
 			incorrect: '',
 			share: ''
@@ -233,7 +273,10 @@
 		answers: [],        // array of answer objects
 		onanswer: null,
 		oncorrect: null,
-		onincorrect: null
+		onincorrect: null,
+		result: '',
+		resultcorrect: '',
+		resultincorrect: ''
 	};
 	
 	$.extend( $.fn.quizzlestick.question.prototype, {
@@ -255,6 +298,9 @@
 		correct: false,     // whether answer is right or not
 		points: 0, 			// points scored for answer
 		onselect: null,
+		result: '',
+		resultcorrect: '',
+		resultincorrect: ''
 		
 	};
 	
