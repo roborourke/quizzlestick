@@ -5,9 +5,6 @@
 		<link rel="stylesheet" type="text/css" href="quizzlestick.css" />
 		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.10.2/jquery.js"></script>
 		<script src="quizzlestick.js"></script>
-		<script>
-			
-		</script>
 	</head>
 	<body>
 		
@@ -22,6 +19,28 @@
 		
 		<h1>Multiple results</h1>
 		<div class="multiple-results"></div>
+		
+		
+		
+		<script>
+			$( '.quickfire' ).quizzlestick( {
+				description: 'Quickfire quizzes!',
+				questions: [
+					{
+						question: 'Who is older?',
+						answers: [
+							{
+								answer: 'Aguerro',
+								correct: true
+							},
+							{
+								answer: 'Vivaldi'
+							}
+						]
+					}
+				]
+			} );
+		</script>
 		
 	</body>
 </html>
