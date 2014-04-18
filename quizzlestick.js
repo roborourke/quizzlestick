@@ -65,6 +65,8 @@
 								// been answered
 								question.addClass( 'quizzlestick-answered' ).data( 'answered', true );
 								
+								qdata.total++;
+								
 								// store answer
 								if ( ! config.state.answers[ questionid ] )
 									config.state.answers[ questionid ] = [];
@@ -77,6 +79,9 @@
 									
 									// store answers
 									config.state.answers[ questionid ].push( answerid );
+									
+									// increment number of answers
+									adata.total++;
 									
 									if ( adata.correct ) {
 										
@@ -203,7 +208,7 @@
 								
 							} else {
 								
-								console.log( 'results?', config.state );
+								console.log( 'results?', config.state, config );
 							
 								question.removeClass( 'quizzlestick-current' );
 								
@@ -515,7 +520,7 @@
 			resultincorrect: '',
 			correct: [],
 			template: 'templates.question',
-			total: 0
+			total: 0 			// override this with total number of answers
 		},
 		
 		// answer defaults
@@ -528,7 +533,7 @@
 			resultcorrect: '',
 			resultincorrect: ''	,
 			template: 'templates.answer',
-			total: 0
+			total: 0			// override this with total number of answers
 		},
 		
 		// html output for quiz elements
