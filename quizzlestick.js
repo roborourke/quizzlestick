@@ -207,8 +207,6 @@
 									.removeClass( 'quizzlestick-question-next' );
 								
 							} else {
-								
-								console.log( 'results?', config.state, config );
 							
 								question.removeClass( 'quizzlestick-current' );
 								
@@ -304,7 +302,7 @@
 					
 
 					// template function (crappy mustache)
-					parse = function( template, context, index ) {
+					parse = function( template, context, args ) {
 						var getpath = function( path, object ) {
 								path = path.split( '.' );
 								if ( path.length == 4 )
@@ -325,11 +323,11 @@
 								// array type
 								if ( $.type( val ) === 'array' ) {
 									$.each( val, function( i, item ) {
-										out += parse( getpath( item.template, config ), item, i );
+										out += parse( getpath( item.template, config ), item, { index: i } );
 									} );
 								// function type
 								} else if ( $.type( val ) === 'function' ) {
-									out = val.apply( quiz.get(0), [ context, config, index ] );
+									out = val.apply( quiz.get(0), [ context, config, args ] );
 								// string	
 								} else {
 									out = val;
@@ -469,9 +467,23 @@
 		questions: [],
 		
 		// array of possible results
-		results: [
+		results: {
+			// '4': 'rubbish!',				// 0-4 points
+			// '8': 'ok I guess',			// 4-8 points
+			// '12': 'well done',			// 8-12 points
+			// '16': 'get you, genius!'		// 12-16 points
+		},
+		
+		// returns a points based result from the results object
+		getresult: function( points, results ) {
 			
-		],
+			for ( var n in results ) {
+				if ( points <= parseInt( n, 10 ) )
+					return results[ n ];
+			}
+			
+			return false;
+		},
 		
 		// events
 		onstart: function() {
@@ -520,7 +532,8 @@
 			resultincorrect: '',
 			correct: [],
 			template: 'templates.question',
-			total: 0 			// override this with total number of answers
+			total: 0, 			// override this with total number of answers
+			friends: []			// list of friend ids eg. facebook
 		},
 		
 		// answer defaults
@@ -533,7 +546,8 @@
 			resultcorrect: '',
 			resultincorrect: ''	,
 			template: 'templates.answer',
-			total: 0			// override this with total number of answers
+			total: 0,			// override this with total number of answers
+			friends: []			// list of friend ids eg. facebook
 		},
 		
 		// html output for quiz elements
