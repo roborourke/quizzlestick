@@ -25,6 +25,66 @@
 		<script>
 			$( '.quickfire' ).quizzlestick( {
 				description: 'Quickfire quizzes!',
+				templates: {
+					answer: '\
+						<li class="quizzlestick-answer">\
+							<a href="#">{{answer}}</a>\
+							{{helpers.answerwidth}}%\
+						</li>\
+					'
+				},
+				questions: [
+					{
+						question: 'Who is older?',
+						answers: [
+							{
+								answer: 'Pointy haired boss',
+								total: 100
+							},
+							{
+								answer: 'Aguerro',
+								total: 300
+								
+							},
+							{
+								answer: 'Vivaldi',
+								correct: true,
+								total: 1000
+							}
+						]
+					},
+					{
+						question: 'Who is older?',
+						answers: [
+							{
+								answer: 'Liz'
+							},
+							{
+								answer: 'Rob',
+								correct: true
+							},
+						]
+					},
+					{
+						question: 'Who is older?',
+						answers: [
+							{
+								answer: 'Barney',
+								correct: true
+							},
+							{
+								answer: 'Jeff'
+							},
+						]
+					}
+				]
+			} );
+			
+			$( '.timed' ).quizzlestick( {
+				description: 'Timed quiz with automatic advancement',
+				timelimit: 30000,
+				nextdelay: 500,
+				results: 'You scored {{state.points}} out of {{state.maxpoints}} in {{helpers.gettime}}',
 				questions: [
 					{
 						question: 'Who is older?',
@@ -33,11 +93,12 @@
 								answer: 'Pointy haired boss'
 							},
 							{
-								answer: 'Aguerro',
-								correct: true
+								answer: 'Aguerro'
+								
 							},
 							{
-								answer: 'Vivaldi'
+								answer: 'Vivaldi',
+								correct: true
 							}
 						]
 					},
