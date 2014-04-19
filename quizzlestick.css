@@ -1,0 +1,17 @@
+
+.quizzlestick-hidden {
+	opacity: 0;
+	cursor: default;
+}
+
+.quizzlestick-question {
+	display: none;
+}
+
+.quizzlestick-current {
+	display: block;
+}
+
+.quizzlestick-answer {
+	cursot: pointer;
+}

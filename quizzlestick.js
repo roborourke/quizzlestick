@@ -23,17 +23,19 @@
 					var quiz = $( this ),
 						config = quizconfig || quiz.data( 'config' ),
 						questions,
-						parse;
+						parse,
+						clock;
 					
 					// make sure we have everything we need
-					config = $.extend( {}, $.fn.quizzlestick.defaults, config );
+					config = $.extend( true, {}, $.fn.quizzlestick.defaults, config );
 					
 					// store reference to quiz & current state on element
-					quiz.data( 'quiz', config );
+					quiz.data( 'config', config );
 					
-					// bind events
 					quiz
-						// triggers
+						// styling/js hooks
+						.addClass( 'quizzlestick-' + config.type )
+						// bind events
 						.on( 'start', 		config.onstart 		)
 						.on( 'complete', 	config.oncomplete 	)
 						.on( 'answer', 		config.onanswer 	)
@@ -44,9 +46,47 @@
 						.on( 'prev', 		config.onprev 		)
 						.on( 'get', 		config.onget 		)
 						.on( 'set', 		config.onset 		)
+						
 						// inputs
+						.on( 'click', '.quizzlestick-start', function( e ) {
+							
+							// check we're not running already
+							if ( quiz.data( 'started' ) || quiz.data( 'complete' ) )
+								return;
+							
+							quiz.data( 'started', true );
+							
+							// quiz timer
+							clock = setInterval( function() {
+								
+								// increment quiz time
+								config.state.time += 1000;
+								quiz.find( '.quizzlestick-timer' ).html( parse( '{{templates.timer}}', config ) );
+								
+								// end quiz
+								if ( config.state.time >= config.timelimit ) {
+									
+									// show results
+									config.state.question = questions.length - 1;
+									questions.eq(-1).find( '.quizzlestick-next' ).click();
+									
+								} else {
+									
+									
+								}
+								
+							}, 1000 );
+							
+							// show questions & hide start screen
+							quiz.find( '.quizzlestick-start-screen' ).addClass( 'quizzlestick-hidden' ).hide();
+							quiz.find( '.quizzlestick-questions' ).show().removeClass( 'quizzlestick-hidden' );
+							
+							} )
 						.on( 'click', '.quizzlestick-check', function( e ) {
 							e.preventDefault();
+							
+							if ( quiz.data( 'complete' ) )
+								return;
 							
 							var question = $( this ).parents( '.quizzlestick-question' ),
 								answers = question.find( '.quizzlestick-answer' ),
@@ -84,6 +124,9 @@
 									adata.total++;
 									
 									if ( adata.correct ) {
+										
+										// increment points
+										config.state.points += adata.points;
 										
 										// correct answer styling
 										answer.addClass( 'quizzlestick-correct' );
@@ -170,7 +213,7 @@
 								
 								// show next if no q delay
 								if ( ! config.nextdelay ) {
-									if ( config.mustanswer )
+									if ( config.mustanswer && questions.length > 1 )
 										next.show().removeClass( 'quizzlestick-hidden' );
 								} else {
 									setTimeout( function() {
@@ -185,44 +228,72 @@
 						.on( 'click', '.quizzlestick-next', function( e ) {
 							e.preventDefault();
 							
+							if ( quiz.data( 'complete' ) )
+								return;
+							
 							var question = $( this ).parents( '.quizzlestick-question' ),
 								answers = question.find( '.quizzlestick-answer' ),
 								result = question.find( '.quizzlestick-result' ),
+								resulthtml = '',
 								questionid = questions.index( question ),
 								qdata = config.questions[ questionid ];
 							
 							// update state
 							config.state.question++;
 							
+							// remove current class
+							question
+								.removeClass( 'quizzlestick-current' )
+								.addClass( 'quizzlestick-question-prev' );
+								
 							// have we reached the end
 							if ( config.state.question < questions.length ) {
 							
 								// move current classes
-								question
-									.removeClass( 'quizzlestick-current' )
-									.addClass( 'quizzlestick-question-prev' );
-									
 								question.next()
 									.addClass( 'quizzlestick-current' )
 									.removeClass( 'quizzlestick-question-next' );
-								
-							} else {
+									
+								quiz.find( '.quizzlestick-progress' ).html( parse( '{{templates.progress}}', config ) );
 							
+							// finish game
+							} else {
+								
+								// stop clock if running
+								if ( config.timelimit )
+									clearInterval( clock );
+							
+								// quiz finished	
+								quiz
+									.addClass( 'quizzlestick-complete' )
+									.data( 'complete', true );
+								
+								// hide all navigation links
+								quiz.find( '.quizzlestick-next' ).addClass( 'quizzlestick-hidden' );
+								quiz.find( '.quizzlestick-prev' ).addClass( 'quizzlestick-hidden' );
+								
 								question.removeClass( 'quizzlestick-current' );
 								
-								// quiz finished	
-								quiz.addClass( 'quizzlestick-complete' );
+								// mark all questions answered
+								questions
+									.each( function() {
+										$( this ).data( 'answered', true );
+									} );
 								
 								// show final results
 								quiz.find( '.quizzlestick-result-final' )
+									.show()
 									.removeClass( 'quizzlestick-hidden' )
-									.html( 'done!' );
+									.html( parse( '{{templates.result}}', config ) );
 									
 							}
 							
 							} )
 						.on( 'click', '.quizzlestick-answer', function( e ) {
 							e.preventDefault();
+							
+							if ( quiz.data( 'complete' ) )
+								return;
 							
 							var answer = $( this ),
 								question = $( this ).parents( '.quizzlestick-question' ),
@@ -279,24 +350,44 @@
 					// check if we have no correct answers eg. it's a poll
 					$.each( config.questions, function( q, question ) {
 						
+						var highest = 0;
+						
 						// initialise question object
-						config.questions[ q ] = $.extend( {}, $.fn.quizzlestick.defaults.questiondefaults, question );
+						question = $.extend( true, {}, $.fn.quizzlestick.defaults.questiondefaults, question );
 						
 						$.each( question.answers, function( a, answer ) {
 							
 							// initialise answer object
-							config.questions[ q ].answers[ a ] = $.extend( {}, $.fn.quizzlestick.defaults.answerdefaults, answer );
+							answer = $.extend( true, {}, $.fn.quizzlestick.defaults.answerdefaults, answer );
 							
 							// add flag incase multiple right answers
 							if ( answer.correct ) {
-								config.questions[ q ].correct.push( a );
+								question.correct.push( a );
 								config.state.poll = false;
 							}
 							
+							// default correct answers to 1 point
+							if ( answer.correct && ! answer.points )
+								answer.points = 1;
+							
 							// update maxpoints
-							config.state.maxpoints += config.questions[ q ].answers[ a ].points;
+							if ( config.type == 'multi' && answer.correct )
+								config.state.maxpoints += answer.points;
+							if ( config.type == 'single' && answer.points > highest )
+								highest = answer.points;
+							
+							// make sure config matches updated
+							question.answers[ a ] = answer;
 							
 						} );
+						
+						// add the highest scoring answer to maxpoints
+						if ( config.type == 'single' && highest )
+							config.state.maxpoints += highest;
+							
+						console.log( question );
+						
+						config.questions[ q ] = question;
 						
 					} );
 					
@@ -317,7 +408,7 @@
 							},
 							parser = function( match, p1, offset, s ) {
 								// get object property
-								var val = getpath( p1, context ),
+								var val = arguments.length == 4 ? getpath( p1, context ) : s,
 									out = '';
 								
 								// array type
@@ -342,11 +433,24 @@
 					// create markup
 					quiz.html( parse( config.templates.wrap, config ) );
 					
+					// hide results div
+					quiz.find( '.quizzlestick-result-final' ).hide();
+					
 					// store some placeholder vars for elements of the quiz
 					questions = quiz.find( '.quizzlestick-question' );
 					
-					// if timed game show start screen
+					// hide the progress bar if only 1 question
+					if ( questions.length < 2 ) {
+						quiz.find( '.quizzlestick-progress' ).remove();
+					}
 					
+					// if timed game hide questions & show start screen
+					if ( config.timelimit ) {
+						quiz.find( '.quizzlestick-questions' ).hide().addClass( 'quizzlestick-hidden' );
+					} else {
+						quiz.find( '.quizzlestick-timer' ).remove();
+						quiz.find( '.quizzlestick-start-screen' ).remove();
+					}
 					
 					// if single choice hide check answer
 					if ( config.type == 'single' )
@@ -363,7 +467,7 @@
 						questions.eq( config.state.question ).addClass( 'quizzlestick-current' );
 						questions.eq( config.state.question + 1 ).addClass( 'quizzlestick-question-next' );
 						questions.eq(-1).find( '.quizzlestick-next' ).html( 'Results' );
-						// progress meter
+
 					}
 
 					return quiz;
@@ -467,6 +571,9 @@
 		questions: [],
 		
 		// array of possible results
+		// available template tags:
+		// 		{{points}}
+		// 		{{maxpoints}}
 		results: {
 			// '4': 'rubbish!',				// 0-4 points
 			// '8': 'ok I guess',			// 4-8 points
@@ -486,39 +593,17 @@
 		},
 		
 		// events
-		onstart: function() {
-			
-		},
-		oncomplete: function() {
-			
-		},
-		onselect: function() {
-		
-		},
-		onanswer: function() {
-			
-		},
-		oncorrect: function() {
-			
-		},
-		onincorrect: function() {
-			
-		},
-		ontimeup: function() {
-			
-		},
-		onnext: function() {
-			
-		},
-		onprev: function() {
-			
-		},
-		onget: function() {
-			
-		},
-		onset: function() {
-			
-		},
+		onstart		: $.noop,
+		oncomplete	: $.noop,
+		onselect	: $.noop,
+		onanswer	: $.noop,
+		oncorrect	: $.noop,
+		onincorrect	: $.noop,
+		ontimeup	: $.noop,
+		onnext		: $.noop,
+		onprev		: $.noop,
+		onget		: $.noop,
+		onset		: $.noop,
 		
 		// question defaults
 		questiondefaults: {
@@ -530,7 +615,7 @@
 			result: '',
 			resultcorrect: '',
 			resultincorrect: '',
-			correct: [],
+			correct: [],		// array of correct answer ids
 			template: 'templates.question',
 			total: 0, 			// override this with total number of answers
 			friends: []			// list of friend ids eg. facebook
@@ -554,39 +639,71 @@
 		templates: {
 			wrap: '\
 				<div class="quizzlestick">\
-					{{templates.description}}\
-					{{templates.timer}}\
-					{{templates.questions}}\
-					{{templates.result}}\
+					<div class="quizzlestick-description">\
+						{{templates.description}}\
+					</div>\
+					<div class="quizzlestick-progress">\
+						{{templates.progress}}\
+					</div>\
+					<div class="quizzlestick-timer">\
+						{{templates.timer}}\
+					</div>\
+					<div class="quizzlestick-start-screen">\
+						{{templates.timerstart}}\
+					</div>\
+					<ul class="quizzlestick-questions">\
+						{{templates.questions}}\
+					</ul>\
+					<div class="quizzlestick-result quizzlestick-result-final quizzlestick-hidden">\
+						{{templates.result}}\
+					</div>\
 				</div>\
 			',
 			description: '\
-				<div class="quizzlestick-description">\
-					{{description}}\
-				</div>\
+				{{description}}\
 			',
+			progress: function( context, config ) {
+				if ( config.questions.length < 2 )
+					return '';
+				return '\
+					Question <span class="quizzlestick-current-num">' + (config.state.question + 1) + '</span>\
+					of <span class="quizzlestick-total">' + config.questions.length + '</span>\
+				';
+			},
 			timer: function( context, config ) {
 				if ( ! config.timelimit )
 					return '';
+				var seconds = Math.floor( config.state.time / 1000 ),
+					minutes = Math.floor( seconds / 60 ),
+					hours   = Math.floor( minutes / 60 ),
+					time = '',
+					width = ( 100 / config.timelimit ) * config.state.time;
+				seconds -= minutes * 60;
+				minutes -= hours * 60;
+				if ( hours )
+					time += ( hours < 10 ? '0' + hours : hours ) + ':';
+				time += ( minutes < 10 ? '0' + minutes : minutes ) + ':';
+				time += ( seconds < 10 ? '0' + seconds : seconds );
 				return '\
-				<div class="quizzlestick-timer">\
-					<span class="quizzlestick-timer-time">0:00</span>\
+					<span class="quizzlestick-timer-time">' + time + '</span>\
 					<div class="quizzlestick-timer-progress">\
-						<div class="quizzlestick-timer-progress-bar"></div>\
+						<div class="quizzlestick-timer-progress-bar" style="width:' + width + '%;"></div>\
 					</div>\
-				</div>\
 				';
 			},
+			timerstart: '\
+				<button class="quizzlestick-start" type="button">Start</button>\
+			',
 			result: function( context, config ) {
-				return '\
-				<div class="quizzlestick-result quizzlestick-result-final quizzlestick-hidden">\
-					{{templates.share}}\
-				</div>';
+				if ( config.results.length ) {
+					var result = config.getresult( config.state.points, config.results );
+					if ( result )
+						return result;
+				}
+				return 'You scored ' + config.state.points + ' out of ' + config.state.maxpoints
 			},
 			questions: '\
-				<ul class="quizzlestick-questions">\
-					{{questions}}\
-				</ul>\
+				{{questions}}\
 			',
 			question: '\
 				<li class="quizzlestick-question">\
