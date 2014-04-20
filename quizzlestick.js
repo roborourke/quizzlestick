@@ -241,7 +241,6 @@
 								return;
 							
 							var question = $( this ).parents( '.quizzlestick-question' ),
-								resulthtml = '',
 								questionid = questions.index( question ),
 								qdata = config.questions[ questionid ];
 							
@@ -793,11 +792,15 @@
 			// result helper
 			getresult: function( context, config ) {
 				
+				// nothing if quiz isn't finished
+				if ( ! $( this ).data( 'complete' ) )
+					return '';
+				
 				// get from results object
 				if ( $.type( config.results ) === 'object' ) {
 					for ( var n in config.results ) {
 						if ( config.state.points <= parseInt( n, 10 ) )
-							return results[ n ];
+							return config.results[ n ];
 					}
 				}
 				

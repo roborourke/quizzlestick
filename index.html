@@ -128,6 +128,71 @@
 					}
 				]
 			} );
+			
+			
+			$( '.multiple-results' ).quizzlestick( {
+				description: 'Multiple results!',
+				templates: {
+					answer: '\
+						<li class="quizzlestick-answer">\
+							<a href="#">{{answer}}</a>\
+						</li>\
+					'
+				},
+				results: {
+					'1': 'Maybe your shouldve paid attention in history',
+					'2': 'Not too shabby',
+					'3': 'Smarty pantaloons!'
+				},
+				onanswer: function() {
+					console.log( this, arguments );	
+				},
+				questions: [
+					{
+						question: 'Who is older?',
+						answers: [
+							{
+								answer: 'Pointy haired boss',
+								total: 100
+							},
+							{
+								answer: 'Aguerro',
+								total: 300
+								
+							},
+							{
+								answer: 'Vivaldi',
+								correct: true,
+								total: 1000
+							}
+						]
+					},
+					{
+						question: 'Who is older?',
+						answers: [
+							{
+								answer: 'Liz'
+							},
+							{
+								answer: 'Rob',
+								correct: true
+							},
+						]
+					},
+					{
+						question: 'Who is older?',
+						answers: [
+							{
+								answer: 'Barney',
+								correct: true
+							},
+							{
+								answer: 'Jeff'
+							},
+						]
+					}
+				]
+			} );
 		</script>
 		
 	</body>
