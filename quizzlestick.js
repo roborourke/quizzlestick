@@ -40,7 +40,7 @@
 					
 					quiz
 						// styling/js hooks
-						.addClass( 'quizzlestick-' + config.type )
+						.addClass( 'quizzlestick quizzlestick-' + config.type )
 						// bind events
 						.on( 'start', 		config.onstart 		)
 						.on( 'complete', 	config.oncomplete 	)
@@ -490,7 +490,7 @@
 					};
 
 					// create markup
-					quiz.html( parse( config.templates.wrap, config ) );
+					quiz.html( parse( config.templates.scaffold, config ) );
 					
 					// store some placeholder vars for elements of the quiz
 					questionwrap 	= quiz.find( '.quizzlestick-questions' );
@@ -594,6 +594,9 @@
 		// game type, 'single', 'multi' only at the moment
 		type: 'single',
 		
+		// an optional ID for the quiz if you need to refer to it programmatically with an outside API
+		id: '',
+		
 		// quiz description html, can be anything such as a main question or instructions
 		description: '',
 		
@@ -689,26 +692,24 @@
 		
 		// html output for quiz elements
 		templates: {
-			wrap: '\
-				<div class="quizzlestick">\
-					<div class="quizzlestick-description">\
-						{{templates.description}}\
-					</div>\
-					<div class="quizzlestick-progress">\
-						{{templates.progress}}\
-					</div>\
-					<div class="quizzlestick-timer">\
-						{{templates.timer}}\
-					</div>\
-					<div class="quizzlestick-start-screen">\
-						{{templates.timerstart}}\
-					</div>\
-					<ul class="quizzlestick-questions">\
-						{{templates.questions}}\
-					</ul>\
-					<div class="quizzlestick-result quizzlestick-result-final quizzlestick-hidden">\
-						{{templates.result}}\
-					</div>\
+			scaffold: '\
+				<div class="quizzlestick-description">\
+					{{templates.description}}\
+				</div>\
+				<div class="quizzlestick-progress">\
+					{{templates.progress}}\
+				</div>\
+				<div class="quizzlestick-timer">\
+					{{templates.timer}}\
+				</div>\
+				<div class="quizzlestick-start-screen">\
+					{{templates.timerstart}}\
+				</div>\
+				<ul class="quizzlestick-questions">\
+					{{templates.questions}}\
+				</ul>\
+				<div class="quizzlestick-result quizzlestick-result-final quizzlestick-hidden">\
+					{{templates.result}}\
 				</div>\
 			',
 			description: '\
@@ -719,9 +720,9 @@
 				of <span class="quizzlestick-total">{{helpers.numquestions}}</span>\
 			',
 			timer: '\
-				<span class="quizzlestick-timer-time">{{helpers.gettime}}</span>\
+				<span class="quizzlestick-timer-time">{{helpers.remainingtime}}</span>\
 				<div class="quizzlestick-timer-progress">\
-					<div class="quizzlestick-timer-progress-bar" style="width:{{helpers.gettimerwidth}}%;"></div>\
+					<div class="quizzlestick-timer-progress-bar" style="width:{{helpers.timerwidth}}%;"></div>\
 				</div>\
 			',
 			timerstart: '\
@@ -769,7 +770,7 @@
 		helpers: {
 			
 			// timer helpers
-			gettime: function( context, config ) {
+			time: function( context, config ) {
 				var seconds = Math.floor( config.state.time / 1000 ),
 					minutes = Math.floor( seconds / 60 ),
 					hours   = Math.floor( minutes / 60 ),
@@ -782,11 +783,24 @@
 				time += ( seconds < 10 ? '0' + seconds : seconds );
 				return time;
 			},
-			gettimerwidth: function( context, config ) {
+			timerwidth: function( context, config ) {
 				var width = ( 100 / config.timelimit ) * config.state.time;
 				if ( isNaN( width ) )
 					width = 0;
 				return width;
+			},
+			remainingtime: function( context, config ) {
+				var seconds = Math.floor( (config.timelimit - config.state.time) / 1000 ),
+					minutes = Math.floor( seconds / 60 ),
+					hours   = Math.floor( minutes / 60 ),
+					time = '';
+				seconds -= minutes * 60;
+				minutes -= hours * 60;
+				if ( hours )
+					time += ( hours < 10 ? '0' + hours : hours ) + ':';
+				time += ( minutes < 10 ? '0' + minutes : minutes ) + ':';
+				time += ( seconds < 10 ? '0' + seconds : seconds );
+				return time;
 			},
 			
 			// result helper
@@ -819,7 +833,7 @@
 			currentquestion: function( context, config ) {
 				return config.state.question + 1;
 			},
-			getprogresswidth: function( context, config ) {
+			progresswidth: function( context, config ) {
 				var width = ( 100 / config.timelimit ) * config.state.time;
 				if ( isNaN( width ) )
 					width = 0;
