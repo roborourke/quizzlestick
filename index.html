@@ -38,43 +38,15 @@
 						question: 'Who is older?',
 						answers: [
 							{
-								answer: 'Pointy haired boss',
-								total: 100
-							},
-							{
-								answer: 'Aguerro',
+								answer: 'Gerrard',
 								total: 300
 								
 							},
 							{
-								answer: 'Vivaldi',
+								answer: 'Owen',
 								correct: true,
 								total: 1000
 							}
-						]
-					},
-					{
-						question: 'Who is older?',
-						answers: [
-							{
-								answer: 'Liz'
-							},
-							{
-								answer: 'Rob',
-								correct: true
-							},
-						]
-					},
-					{
-						question: 'Who is older?',
-						answers: [
-							{
-								answer: 'Barney',
-								correct: true
-							},
-							{
-								answer: 'Jeff'
-							},
 						]
 					}
 				]
@@ -131,25 +103,17 @@
 			
 			
 			$( '.multiple-results' ).quizzlestick( {
-				description: 'Multiple results!',
-				templates: {
-					answer: '\
-						<li class="quizzlestick-answer">\
-							<a href="#">{{answer}}</a>\
-						</li>\
-					'
-				},
 				results: {
-					'1': 'Maybe your shouldve paid attention in history',
-					'2': 'Not too shabby',
-					'3': 'Smarty pantaloons!'
+					'1': '<p>Maybe your shouldve paid attention in history</p>',
+					'2': '<p>Not too shabby</p>',
+					'3': '<p>Smarty pantaloons!</p>'
 				},
 				onanswer: function() {
 					console.log( this, arguments );	
 				},
 				questions: [
 					{
-						question: 'Who is older?',
+						question: '<p>Who is older?</p>',
 						answers: [
 							{
 								answer: 'Pointy haired boss',
@@ -168,7 +132,7 @@
 						]
 					},
 					{
-						question: 'Who is older?',
+						question: '<p>Who is older?</p>',
 						answers: [
 							{
 								answer: 'Liz'
@@ -180,7 +144,7 @@
 						]
 					},
 					{
-						question: 'Who is older?',
+						question: '<p>Who is older?</p>',
 						answers: [
 							{
 								answer: 'Barney',
