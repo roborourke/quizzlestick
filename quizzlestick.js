@@ -9,19 +9,20 @@
 * Date: Sun Apr 6 16:00:00 2014
 */
 (function($){
-	
+
 	var methods = {
-			
+
 			// set up game engine
 			quiz: function( quiz ) {
-				
+
 				// declare var for this scope
 				var quizconfig = quiz;
-				
+
 				return this.each( function() {
-					
+
 					var quiz = $( this ),
-						config = quizconfig || quiz.data( 'config' ),
+						config = quizconfig || quiz.data( 'quizzlestick' ),
+						apidata, 		// fetch data from the api you define when the quiz is loading to override values
 						questionwrap,	// pointer to wrapper element for questions
 						questions, 		// pointer to questions collection
 						progress,		// pointer to progress indicator
@@ -31,13 +32,25 @@
 						getpath,		// find items in an object by parsing a string eg. 'object.property'
 						parse, 			// template parser function
 						clock;			// timer interval
-					
+
 					// make sure we have everything we need
 					config = $.extend( true, {}, $.fn.quizzlestick.defaults, config );
-					
+
 					// store reference to quiz & current state on element
-					quiz.data( 'config', config );
-					
+					quiz.data( {
+						quizzlestick: config,
+						initialised: true
+					} );
+
+					// if a config ID is available attempt to fetch something we can extend config with
+					// use this to pull down totals & friend lists etc... in case of front end caching
+					if ( config.id ) {
+						apidata = config.api.get( config.id );
+						if ( $.type( apidata ) === 'object' ) {
+							config = $.extend( true, config, apidata );
+						}
+					}
+
 					quiz
 						// styling/js hooks
 						.addClass( 'quizzlestick quizzlestick-' + config.type )
@@ -52,50 +65,50 @@
 						.on( 'prev', 		config.onprev 		)
 						.on( 'get', 		config.onget 		)
 						.on( 'set', 		config.onset 		)
-						
+
 						// starts the timer
 						.on( 'click', '.quizzlestick-start', function( e ) {
-							
+
 							// check we're not running already
 							if ( quiz.data( 'started' ) || quiz.data( 'complete' ) )
 								return;
-							
+
 							quiz.data( 'started', true );
-							
+
 							// quiz timer
 							clock = setInterval( function() {
-								
+
 								// increment quiz time
 								config.state.time += 1000;
 								timer.html( parse( '{{templates.timer}}', config ) );
-								
+
 								// end quiz
 								if ( config.state.time >= config.timelimit ) {
-									
+
 									// show results
 									config.state.question = questions.length - 1;
 									questions.eq(-1).find( '.quizzlestick-next' ).click();
-									
+
 								} else {
-									
-									
+
+
 								}
-								
+
 							}, 1000 );
-							
+
 							// show questions & hide start screen
 							start.addClass( 'quizzlestick-hidden' ).hide();
 							questionwrap.show().removeClass( 'quizzlestick-hidden' );
-							
+
 							} )
-						
+
 						// check the answer(s)
 						.on( 'click', '.quizzlestick-check', function( e ) {
 							e.preventDefault();
-							
+
 							if ( quiz.data( 'complete' ) )
 								return;
-							
+
 							var question = $( this ).parents( '.quizzlestick-question' ),
 								answers = question.find( '.quizzlestick-answer' ),
 								qresult = question.find( '.quizzlestick-result' ),
@@ -105,121 +118,131 @@
 								questionid = questions.index( question ),
 								qdata = config.questions[ questionid ],
 								correct;
-							
+
 								// don't allow questions to be answered again
 								if ( question.data( 'answered' ) )
 									return;
 
+								// hide check button
+								check
+									.addClass( 'quizzlestick-hidden' )
+									.hide();
+
 								// been answered
 								question.addClass( 'quizzlestick-answered' ).data( 'answered', true );
-								
+
 								qdata.total++;
-								
+
 								// store answer
 								if ( ! config.state.answers[ questionid ] )
 									config.state.answers[ questionid ] = [];
-								
+
 								// check answers
 								selected.each( function() {
 									var answer = $( this ),
 										answerid = answers.index( answer ),
 										adata = qdata.answers[ answerid ];
-									
+
 									// store answers
 									config.state.answers[ questionid ].push( answerid );
-									
+
 									// increment number of answers
 									adata.total++;
-									
+
 									if ( adata.correct ) {
-										
+
 										// increment points
-										config.state.points += adata.points;
-										
+										config.state.points += parseInt( adata.points, 10 );
+
 										// correct answer styling
 										answer.addClass( 'quizzlestick-correct' );
-										
+
 										// show correct result in result box
 										if ( adata.resultcorrect )
 											qresult.append( parse( adata.resultcorrect, adata ) );
-										
+
 									} else if ( ! config.state.poll ) {
-										
+
 										// incorrect answer styling
 										answer.addClass( 'quizzlestick-incorrect' );
-										
+
 										// show incorrect result
 										if ( adata.resultincorrect )
 											qresult.append( parse( adata.resultincorrect, adata ) );
-										
+
 									}
 								} );
-								
+
 								// is it correct
 								correct = config.state.answers[ questionid ].sort().join('') == qdata.correct.sort().join('');
-								
+
 								// show correct answers
 								answers.each( function( i ) {
 									if ( $.inArray( i, qdata.correct ) >= 0 )
 										$( this ).addClass( 'quizzlestick-correct' );
 								} );
-								
+
 								// multi choice handling
 								if ( config.type == 'multi' ) {
-									
+
 								}
-								
+
 								// single choice handling
 								if ( config.type == 'single' ) {
-								
+
 								}
-								
+
 								// is this a quiz
 								if ( ! config.state.poll ) {
-									
+
 									// are we correct?
 									if ( correct ) {
-										
+
 										question.addClass( 'quizzlestick-question-correct' );
-										
+
 										if ( qdata.resultcorrect )
 											qresult.append( parse( qdata.resultcorrect, qdata ) );
 										else if ( qdata.result )
 											qresult.append( parse( qdata.result, qdata ) );
-										else
-											qresult.prepend( parse( config.templates.correct, qdata ) );
-											
+
+										qresult.prepend( parse( config.templates.correct, qdata ) );
+
 										// oncorrect
 										quiz.trigger( 'correct', [ correct, question, qdata, config ] );
-										
+
 									} else {
-										
+
 										question.addClass( 'quizzlestick-question-incorrect' );
-										
+
 										if ( qdata.resultcorrect )
 											qresult.append( parse( qdata.resultincorrect, qdata ) );
 										else if ( qdata.result )
 											qresult.append( parse( qdata.result, qdata ) );
-										else
-											qresult.prepend( parse( config.templates.incorrect, qdata ) );
-										
+
+										qresult.prepend( parse( config.templates.incorrect, qdata ) );
+
 										// onincorrect
 										quiz.trigger( 'incorrect', [ correct, question, qdata, config ] );
-										
+
 									}
-									
+
 								// this is a poll
 								} else {
-									
+
+									// update answer templates before parsing
+									$.each( qdata.answers, function( a, answer ) {
+										qdata.answers[ a ].template = config.templates.pollresult;
+									} );
+
 									// get poll result
-									qresult.append( '' );
-									
+									qresult.append( parse( config.templates.pollresults, qdata ) );
+
 								}
-								
+
 								// show result text if any
 								if ( $.trim( qresult.html() ) !== '' )
 									qresult.removeClass( 'quizzlestick-hidden' );
-								
+
 								// show next if no q delay
 								if ( ! config.nextdelay ) {
 									if ( config.mustanswer && questions.length > 1 )
@@ -229,112 +252,115 @@
 										next.click();
 									}, config.nextdelay );
 								}
-								
+
 								// trigger onanswer
 								quiz.trigger( 'answer', [ correct, question, qdata, config ] );
-							
+
 							} )
 						.on( 'click', '.quizzlestick-next', function( e ) {
 							e.preventDefault();
-							
+
 							if ( quiz.data( 'complete' ) )
 								return;
-							
+
 							var question = $( this ).parents( '.quizzlestick-question' ),
 								questionid = questions.index( question ),
 								qdata = config.questions[ questionid ];
-							
+
 							// update state
 							config.state.question++;
-							
+
 							// remove current class
+							questions
+								.removeClass( 'quizzlestick-question-prev quizzlestick-question-next' );
 							question
 								.removeClass( 'quizzlestick-current' )
 								.addClass( 'quizzlestick-question-prev' );
-								
-							// have we reached the end
+
+							// have we reached the end, no?
 							if ( config.state.question < questions.length ) {
-							
+
 								// move current classes
 								question.next()
 									.addClass( 'quizzlestick-current' )
-									.removeClass( 'quizzlestick-question-next' );
-								
+									.next()
+										.addClass( 'quizzlestick-question-next' );
+
 								// update progress indicator
 								progress.html( parse( '{{templates.progress}}', config ) );
-							
+
 							// finish game
 							} else {
-								
+
 								// stop clock if running
 								if ( config.timelimit )
 									clearInterval( clock );
-							
-								// quiz finished	
+
+								// quiz finished
 								quiz
 									.addClass( 'quizzlestick-complete' )
 									.data( 'complete', true );
-								
+
 								// hide all navigation links
 								quiz.find( '.quizzlestick-next' ).addClass( 'quizzlestick-hidden' );
 								quiz.find( '.quizzlestick-prev' ).addClass( 'quizzlestick-hidden' );
-								
+
 								question.removeClass( 'quizzlestick-current' );
-								
+
 								// mark all questions answered
 								questions
 									.each( function() {
 										$( this ).data( 'answered', true );
 									} );
-								
+
 								// show final results
 								result
+									.html( parse( '{{templates.result}}', config ) )
 									.show()
-									.removeClass( 'quizzlestick-hidden' )
-									.html( parse( '{{templates.result}}', config ) );
-									
+									.removeClass( 'quizzlestick-hidden' );
+
 							}
-							
+
 							} )
 						.on( 'click', '.quizzlestick-prev', function( e ) {
 							e.preventDefault();
-							
+
 							if ( quiz.data( 'complete' ) )
 								return;
-							
+
 							var question = $( this ).parents( '.quizzlestick-question' ),
 								resulthtml = '',
 								questionid = questions.index( question ),
 								qdata = config.questions[ questionid ];
-							
+
 							// update state
 							config.state.question--;
-							
+
 							// remove current class
 							question
 								.removeClass( 'quizzlestick-current' )
 								.addClass( 'quizzlestick-question-next' );
-								
+
 							// have we reached the beginning
 							if ( config.state.question >= 0 ) {
-							
+
 								// move current classes
 								question.prev()
 									.addClass( 'quizzlestick-current' )
 									.removeClass( 'quizzlestick-question-prev' );
-									
+
 								// update progress indicator
 								progress.html( parse( '{{templates.progress}}', config ) );
-								
+
 							}
-							
+
 							} )
 						.on( 'click', '.quizzlestick-answer', function( e ) {
 							e.preventDefault();
-							
+
 							if ( quiz.data( 'complete' ) )
 								return;
-							
+
 							var answer = $( this ),
 								question = $( this ).parents( '.quizzlestick-question' ),
 								answers = question.find( '.quizzlestick-answer' ),
@@ -345,100 +371,100 @@
 								answerid = answers.index( answer ),
 								qdata = config.questions[ questionid ];
 								adata = qdata.answers[ answerid ];
-								
+
 							if ( question.data( 'answered' ) )
 								return;
-							
+
 							// multi choice game
 							if ( config.type === 'multi' ) {
-								
+
 								// trigger onselect
 								quiz.trigger( 'select' );
 								answer.trigger( 'select' );
-								
+
 								// selection indicator
 								answer.toggleClass( 'quizzlestick-selected' );
-								
+
 								// show check answer box
 								if ( answers.filter( '.quizzlestick-selected' ).length )
 									check.removeClass( 'quizzlestick-hidden quizzlestick-disabled' );
 								else
 									check.addClass( 'quizzlestick-disabled' );
-								
+
 							}
-							
+
 							// single choice game
 							if ( config.type === 'single' ) {
-								
+
 								// selection indicator
 								answer.addClass( 'quizzlestick-selected' );
-								
+
 								// check answer
 								check.click();
-								
+
 							}
-							
+
 							// onselect
 							if ( $.type( adata.onselect ) === 'function' )
 								adata.onselect.apply( this, [ adata, question, qdata ] );
-								
+
 							quiz.trigger( 'select', [ adata, question, qdata ] );
 							answer.trigger( 'select', [ adata, question, qdata ] );
-							
+
 						} );
-					
+
 					// Process questions & answers
 					// determine total possible points
 					// check if we have no correct answers eg. it's a poll
 					$.each( config.questions, function( q, question ) {
-						
+
 						var highest = 0;
-						
+
 						// initialise question object
 						question = $.extend( true, {}, $.fn.quizzlestick.defaults.questiondefaults, question );
-						
+
 						// populate with default template
 						if ( ! question.template )
 							question.template = config.templates.question;
-						
+
 						$.each( question.answers, function( a, answer ) {
-							
+
 							// initialise answer object
 							answer = $.extend( true, {}, $.fn.quizzlestick.defaults.answerdefaults, answer );
-							
+
 							// populate with default template
 							if ( ! answer.template )
 								answer.template = config.templates.answer;
-							
+
 							// add flag incase multiple right answers
 							if ( answer.correct ) {
 								question.correct.push( a );
 								config.state.poll = false;
 							}
-							
+
 							// default correct answers to 1 point
-							if ( answer.correct && ! answer.points )
+							if ( answer.correct && ! parseInt( answer.points, 10 ) )
 								answer.points = 1;
-							
+
 							// update maxpoints
 							if ( config.type == 'multi' && answer.correct )
-								config.state.maxpoints += answer.points;
+								config.state.maxpoints += parseInt( answer.points, 10 );
 							if ( config.type == 'single' && answer.points > highest )
-								highest = answer.points;
-							
+								highest = parseInt( answer.points, 10 );
+
 							// make sure config matches updated
 							question.answers[ a ] = answer;
-							
+
 						} );
-						
+
 						// add the highest scoring answer to maxpoints
 						if ( config.type == 'single' && highest )
-							config.state.maxpoints += highest;
-						
+							config.state.maxpoints += parseInt( highest, 10 );
+
 						config.questions[ q ] = question;
-						
+
 					} );
-					
+
 					// template function (crappy mustache)
 					getpath = function( path, object ) {
 						path = path.split( '.' );
@@ -457,21 +483,21 @@
 					};
 					parse = function( template, context, args ) {
 
-						// if template is a function then run it
-						if ( $.type( template ) === 'function' )
-							template = template.apply( quiz.get(0), [ context, config, args ] );
-							
 						if ( $.type( template ) === 'undefined' ) {
 							console.log( 'broken template', context, args );
 							return '';
 						}
-						
-						// replace any double bracketed strings
-						return template.toString().replace( /{{([a-z0-9\.]+)}}/gi, function( match, p1, offset, s ) {
+
+						// if template is a function then run it
+						if ( $.type( template ) === 'function' )
+							template = template.apply( quiz.get(0), [ context, config, args ] );
+
+						// replace any double bracketed strings or double underscored
+						return template.toString().replace( /(?:__|{{)([a-z0-9\.]+)(?:}}|__)/gi, function( match, p1, offset, s ) {
 							// get object property
-							var val = arguments.length == 4 ? getpath( p1, context ) : s,
+							var val = getpath( p1, context ),
 								out = '';
-							
+
 							// array type
 							if ( $.type( val ) === 'array' ) {
 								$.each( val, function( i, item ) {
@@ -480,7 +506,13 @@
 							// function type
 							} else if ( $.type( val ) === 'function' ) {
 								out = val.apply( quiz.get(0), [ context, config, args ] );
-							// string	
+							// boolean
+							} else if ( $.type( val ) === 'boolean' ) {
+								out = val ? '1' : '0';
+							// number
+							} else if ( $.type( val ) === 'number' ) {
+								out = config.helpers.numberformat( val );
+							// string
 							} else {
 								out = val;
 							}
@@ -491,7 +523,7 @@
 
 					// create markup
 					quiz.html( parse( config.templates.scaffold, config ) );
-					
+
 					// store some placeholder vars for elements of the quiz
 					questionwrap 	= quiz.find( '.quizzlestick-questions' );
 					questions 		= quiz.find( '.quizzlestick-question' );
@@ -499,32 +531,32 @@
 					timer 			= quiz.find( '.quizzlestick-timer' );
 					result 			= quiz.find( '.quizzlestick-result-final' );
 					start 			= quiz.find( '.quizzlestick-start-screen' );
-					
+
 					// hide results div
 					result.hide();
-					
+
 					// hide the progress bar if only 1 question
 					if ( questions.length < 2 )
 						progress.remove();
-					
+
 					// if timed game hide questions & show start screen
-					if ( config.timelimit ) {
+					if ( parseInt( config.timelimit, 10 ) ) {
 						questionwrap.hide().addClass( 'quizzlestick-hidden' );
 					} else {
 						timer.remove();
 						start.remove();
 					}
-					
+
 					// if single choice hide check answer
 					if ( config.type == 'single' )
 						quiz.find( '.quizzlestick-check' ).hide();
-					
+
 					// hide next buttons, shown when answered
 					if ( config.mustanswer ) {
 						quiz.find( '.quizzlestick-next' ).hide();
 						quiz.find( '.quizzlestick-prev' ).hide();
 					}
-					
+
 					// init state
 					if ( config.questions ) {
 						questions.eq( config.state.question ).addClass( 'quizzlestick-current' );
@@ -535,29 +567,29 @@
 
 					return quiz;
 				} );
-			
+
 			},
-			
+
 			complete: function() {
 				$( this ).trigger( 'complete' );
 				return this;
 			},
-			
+
 			// next question
 			next: function() {
 				$( this ).trigger( 'next' );
 				return this;
 			},
-			
+
 			// prev question
 			prev: function() {
 				$( this ).trigger( 'prev' );
 				return this;
 			},
-			
+
 			// timer controls
 			timer: function( command ) {
-				
+
 				switch( command ) {
 					case 'stop':
 						break;
@@ -566,13 +598,13 @@
 					case 'pause':
 						break;
 				}
-				
+
 				return this;
 			}
-			
+
 		};
 
-	
+
 	$.fn.quizzlestick = function( method ) {
 		// Method calling logic
 		if ( methods[method] ) {
@@ -584,28 +616,31 @@
 		}
 		return this;
 	};
-	
+
 	// default quiz config
 	$.fn.quizzlestick.defaults = {
-		
+
 		// optional additional class name for the quiz. default is quizzlestick + quizzlestick-type
 		classname: '',
-	
+
 		// game type, 'single', 'multi' only at the moment
 		type: 'single',
-		
+
 		// an optional ID for the quiz if you need to refer to it programmatically with an outside API
 		id: '',
-		
+
+		// a title for the quiz for use in templates if desired eg. share template
+		title: '',
+
 		// quiz description html, can be anything such as a main question or instructions
 		description: '',
-		
+
 		// if 0 then no timer, timer starts when user clicks start
 		timelimit: 0,
-		
+
 		// set a delay for auto proceeding to next question on answer, if 0 then requires clicking next
 		nextdelay: 0,
-		
+
 		// reference to current quiz state
 		state: {
 			question: 0,
@@ -615,38 +650,38 @@
 			answers: [],
 			poll: true 		// if any answers are marked as correct this is set to false
 		},
-		
+
 		// if true then players must answer questions before progressing
 		mustanswer: true,
-		
+
 		// an id or unique key to identify the player eg. facebook id
 		player: function() {
-			
+
 			},
-		
+
 		// if true uses a cookie to determine whether user has played or not
 		playonce: false,
-		
+
 		// question ordering
 		order: 'normal', // 'random'
-		
+
 		// limit number of questions each time quiz is shown, only used if order is random
 		maxquestions: 0,
-		
+
 		// array of questions & answers
 		questions: [],
-		
+
 		// array of possible results
 		// available template tags:
 		// 		{{points}}
 		// 		{{maxpoints}}
-		results: {
-			// '4': 'rubbish!',				// 0-4 points
-			// '8': 'ok I guess',			// 4-8 points
-			// '12': 'well done',			// 8-12 points
-			// '16': 'get you, genius!'		// 12-16 points
-		},
-		
+		results: [
+			// { points: 4, template: 'rubbish!' },				// 0-4 points
+			// { points: 8, template: 'ok I guess' },			// 4-8 points
+			// { points: 12, template: 'well done' },			// 8-12 points
+			// { points: 16, template: 'get you, genius!' }		// 12-16 points
+		],
+
 		// events
 		onstart		: $.noop,
 		oncomplete	: $.noop,
@@ -659,7 +694,7 @@
 		onprev		: $.noop,
 		onget		: $.noop,
 		onset		: $.noop,
-		
+
 		// question defaults
 		questiondefaults: {
 			question: '', 		// question html
@@ -675,7 +710,7 @@
 			total: 0, 			// override this with total number of answers
 			friends: []			// list of friend ids eg. facebook
 		},
-		
+
 		// answer defaults
 		answerdefaults: {
 			answer: '',         // answer html
@@ -689,7 +724,7 @@
 			total: 0,			// override this with total number of answers
 			friends: []			// list of friend ids eg. facebook
 		},
-		
+
 		// html output for quiz elements
 		templates: {
 			scaffold: '\
@@ -716,7 +751,7 @@
 				{{description}}\
 			',
 			progress: '\
-				Question <span class="quizzlestick-current-num">{{helpers.currentquestion}}</span>\
+				Question <span class="quizzlestick-current-num">{{helpers.currentquestion}}</span> \
 				of <span class="quizzlestick-total">{{helpers.numquestions}}</span>\
 			',
 			timer: '\
@@ -730,6 +765,7 @@
 			',
 			result: '\
 				{{helpers.getresult}}\
+				{{templates.share}}\
 			',
 			questions: '\
 				{{questions}}\
@@ -740,10 +776,10 @@
 					<ul class="quizzlestick-answers">\
 						{{answers}}\
 					</ul>\
-					<div class="quizzlestick-result quizzlestick-question-result quizzlestick-hidden"></div>\
 					<a class="quizzlestick-check quizzlestick-hidden" href="#">Check answer</a>\
 					<a class="quizzlestick-prev quizzlestick-hidden" href="#">Previous question</a>\
 					<a class="quizzlestick-next quizzlestick-hidden" href="#">Next question</a>\
+					<div class="quizzlestick-result quizzlestick-question-result quizzlestick-hidden"></div>\
 				</li>\
 			',
 			answer: '\
@@ -761,14 +797,18 @@
 					<div class="quizzlestick-poll-result-bar" style="width:{{helpers.answerwidth}}%;"><span>{{total}}</span></div>\
 				</div>\
 			',
-			correct: 'Correct!',
-			incorrect: 'Wrong!',
+			correct: '\
+				<div class="quizzlestick-response-correct">Correct!</div>\
+			',
+			incorrect: '\
+				<div class="quizzlestick-response-incorrect">Wrong!</div>\
+			',
 			share: ''
 		},
-		
+
 		// generic helpers that can return dynamic values to templates
 		helpers: {
-			
+
 			// timer helpers
 			time: function( context, config ) {
 				var seconds = Math.floor( config.state.time / 1000 ),
@@ -802,30 +842,45 @@
 				time += ( seconds < 10 ? '0' + seconds : seconds );
 				return time;
 			},
-			
+
 			// result helper
 			getresult: function( context, config ) {
-				
+
 				// nothing if quiz isn't finished
 				if ( ! $( this ).data( 'complete' ) )
 					return '';
-				
+
 				// get from results object
-				if ( $.type( config.results ) === 'object' ) {
+				if ( $.type( config.results ) === 'array' ) {
+					config.results.sort( function( a, b ) {
+						return a.points > b.points;
+					} );
 					for ( var n in config.results ) {
-						if ( config.state.points <= parseInt( n, 10 ) )
-							return config.results[ n ];
+						if ( config.state.points <= parseInt( config.results[ n ].points, 10 ) )
+							return config.results[ n ].template;
 					}
 				}
-				
+
 				// use result as string
 				if ( $.type( config.results ) === 'string' ) {
 					return config.results;
 				}
-				
+
 				return 'You scored {{state.points}} out of {{state.maxpoints}}';
 			},
-			
+			getresultimage: function( context, config ) {
+				var result = $( this ).find( '.quizzlestick-result-final img' ),
+					results = $( this ).find( '.quizzlestick-result img' );
+
+				if ( result.length ) {
+					return result.eq( -1 ).attr( 'src' );
+				} else if ( results.length ) {
+					return results.eq( -1 ).attr( 'src' );
+				}
+
+				return '';
+			},
+
 			// progress bar helpers
 			numquestions: function( context, config ) {
 				return config.questions.length;
@@ -839,7 +894,7 @@
 					width = 0;
 				return width;
 			},
-			
+
 			// qustion/answer helpers
 			totalanswers: function( question, config ) {
 				return question.total;
@@ -855,20 +910,30 @@
 				if ( isNaN( width ) )
 					width = 0;
 				return width;
+			},
+
+			// utilities
+			numberformat: function( num ) {
+				return '' + num;
 			}
-			
+
 		},
-		
+
 		// storage and retrieval implementation, to be overridden eg. for playtomic
 		api: {
 			set: function( key, value ) {
-				
+				// replace this with a function that can set the data
 				},
 			get: function( key ) {
-				
+				// replace this with a function that can fetch data based on the key
+				return null;
 				}
 		}
 	};
-	
-	
+
+	$( document ).ready( function() {
+		// run on elements with data attribute
+		$( '[data-quizzlestick]' ).quizzlestick();
+	} );
+
 })(jQuery);
