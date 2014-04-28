@@ -148,20 +148,25 @@
 
 									// increment number of answers
 									adata.total++;
+									answer.find( '.quizzlestick-answer-total' ).html( adata.total );
 
+									//
 									if ( adata.correct ) {
 
 										// increment points
 										config.state.points += parseInt( adata.points, 10 );
 
-										// correct answer styling
-										answer.addClass( 'quizzlestick-correct' );
+										// which quizzes are about the end results, only points needed
+										if ( config.type !== 'which' ) {
+											// correct answer styling
+											answer.addClass( 'quizzlestick-correct' );
 
-										// show correct result in result box
-										if ( adata.resultcorrect )
-											qresult.append( parse( adata.resultcorrect, adata ) );
+											// show correct result in result box
+											if ( adata.resultcorrect )
+												qresult.append( parse( adata.resultcorrect, adata ) );
+										}
 
-									} else if ( ! config.state.poll ) {
+									} else if ( config.type !== 'poll' ) {
 
 										// incorrect answer styling
 										answer.addClass( 'quizzlestick-incorrect' );
@@ -182,18 +187,8 @@
 										$( this ).addClass( 'quizzlestick-correct' );
 								} );
 
-								// multi choice handling
-								if ( config.type == 'multi' ) {
-
-								}
-
-								// single choice handling
-								if ( config.type == 'single' ) {
-
-								}
-
 								// is this a quiz
-								if ( ! config.state.poll ) {
+								if ( config.type === 'single' || config.type === 'multi' ) {
 
 									// are we correct?
 									if ( correct ) {
@@ -226,8 +221,13 @@
 
 									}
 
-								// this is a poll
-								} else {
+								// which is it no question/answer result
+								} else if ( config.type === 'which' ) {
+
+									question.addClass( 'quizzlestick-question-correct' );
+
+								// polls update answer template
+								} else if ( config.type === 'poll' ) {
 
 									// update answer templates before parsing
 									$.each( qdata.answers, function( a, answer ) {
@@ -252,6 +252,15 @@
 										next.click();
 									}, config.nextdelay );
 								}
+
+								// post config to API endpoint
+								config.api.send( {
+									id		: config.id,
+									action	: 'answer',
+									question: questionid,
+									correct	: correct,
+									state	: config.state
+								}, config );
 
 								// trigger onanswer
 								quiz.trigger( 'answer', [ correct, question, qdata, config ] );
@@ -394,7 +403,7 @@
 							}
 
 							// single choice game
-							if ( config.type === 'single' ) {
+							if ( config.type === 'single' || config.type === 'poll' || config.type === 'which' ) {
 
 								// selection indicator
 								answer.addClass( 'quizzlestick-selected' );
@@ -436,6 +445,16 @@
 							if ( ! answer.template )
 								answer.template = config.templates.answer;
 
+							// all answers correct if it's a which are you/is it quiz
+							if ( config.type === 'which' )
+								answer.correct = true;
+
+							// no correct answer if it's a poll
+							if ( config.type === 'poll' ) {
+								answer.correct = false;
+								answer.points = 0;
+							}
+
 							// add flag incase multiple right answers
 							if ( answer.correct ) {
 								question.correct.push( a );
@@ -447,9 +466,9 @@
 								answer.points = 1;
 
 							// update maxpoints
-							if ( config.type == 'multi' && answer.correct )
+							if ( config.type === 'multi' && answer.correct )
 								config.state.maxpoints += parseInt( answer.points, 10 );
-							if ( config.type == 'single' && answer.points > highest )
+							if ( ( config.type === 'single' || config.type === 'which' ) && answer.points > highest )
 								highest = parseInt( answer.points, 10 );
 
 							// make sure config matches updated
@@ -458,12 +477,16 @@
 						} );
 
 						// add the highest scoring answer to maxpoints
-						if ( config.type == 'single' && highest )
+						if ( ( config.type === 'single' || config.type === 'which' ) && highest )
 							config.state.maxpoints += parseInt( highest, 10 );
 
 						config.questions[ q ] = question;
 
 					} );
+
+					// its not a poll if it's possible to score any points
+					if ( config.state.maxpoints > 0 )
+						config.state.poll = false;
 
 					// template function (crappy mustache)
 					getpath = function( path, object ) {
@@ -548,8 +571,12 @@
 					}
 
 					// if single choice hide check answer
-					if ( config.type == 'single' )
+					if ( config.type === 'single' || config.type === 'which' || config.type === 'poll' )
 						quiz.find( '.quizzlestick-check' ).hide();
+
+					// if a which are you game add a nextdelay if not set
+					if ( config.type === 'which' )
+						config.nextdelay = config.nextdelay || 500;
 
 					// hide next buttons, shown when answered
 					if ( config.mustanswer ) {
@@ -623,7 +650,7 @@
 		// optional additional class name for the quiz. default is quizzlestick + quizzlestick-type
 		classname: '',
 
-		// game type, 'single', 'multi' only at the moment
+		// game type, 'single', 'multi', 'which', 'poll' only at the moment
 		type: 'single',
 
 		// an optional ID for the quiz if you need to refer to it programmatically with an outside API
@@ -676,10 +703,10 @@
 		// 		{{points}}
 		// 		{{maxpoints}}
 		results: [
-			// { points: 4, template: 'rubbish!' },				// 0-4 points
-			// { points: 8, template: 'ok I guess' },			// 4-8 points
-			// { points: 12, template: 'well done' },			// 8-12 points
-			// { points: 16, template: 'get you, genius!' }		// 12-16 points
+			// { points: 4, template: 'rubbish!', short: '' },				// 0-4 points
+			// { points: 8, template: 'ok I guess', short: '' },			// 4-8 points
+			// { points: 12, template: 'well done', short: '' },			// 8-12 points
+			// { points: 16, template: 'get you, genius!', short: '' }		// 12-16 points
 		],
 
 		// events
@@ -764,7 +791,9 @@
 				<button class="quizzlestick-start" type="button">Start</button>\
 			',
 			result: '\
-				{{helpers.getresult}}\
+				<div class="quizzlestick-result-text">\
+					{{helpers.getresult}}\
+				</div>\
 				{{templates.share}}\
 			',
 			questions: '\
@@ -777,8 +806,8 @@
 						{{answers}}\
 					</ul>\
 					<a class="quizzlestick-check quizzlestick-hidden" href="#">Check answer</a>\
-					<a class="quizzlestick-prev quizzlestick-hidden" href="#">Previous question</a>\
-					<a class="quizzlestick-next quizzlestick-hidden" href="#">Next question</a>\
+					<a class="quizzlestick-prev quizzlestick-hidden" href="#">Previous</a>\
+					<a class="quizzlestick-next quizzlestick-hidden" href="#">Next</a>\
 					<div class="quizzlestick-result quizzlestick-question-result quizzlestick-hidden"></div>\
 				</li>\
 			',
@@ -794,6 +823,7 @@
 			',
 			pollresult: '\
 				<div class="quizzlestick-poll-result">\
+					{{answer}}\
 					<div class="quizzlestick-poll-result-bar" style="width:{{helpers.answerwidth}}%;"><span>{{total}}</span></div>\
 				</div>\
 			',
@@ -886,7 +916,7 @@
 				return config.questions.length;
 			},
 			currentquestion: function( context, config ) {
-				return config.state.question + 1;
+				return parseInt( config.state.question, 10 ) + 1;
 			},
 			progresswidth: function( context, config ) {
 				var width = ( 100 / config.timelimit ) * config.state.time;
@@ -905,8 +935,8 @@
 			answerwidth: function( answer, config, args ) {
 				var total = 0,
 					width = 0;
-				$.map( args.list, function( el, i ) { return total += el.total; } )
-				width = ( 100 / total ) * answer.total;
+				$.map( args.list, function( el, i ) { return total += parseInt( el.total, 10 ); } )
+				width = ( 100 / total ) * parseInt( answer.total, 10 );
 				if ( isNaN( width ) )
 					width = 0;
 				return width;
@@ -924,9 +954,14 @@
 			set: function( key, value ) {
 				// replace this with a function that can set the data
 				},
+
 			get: function( key ) {
 				// replace this with a function that can fetch data based on the key
 				return null;
+				},
+
+			send: function( obj, config ) {
+				// replace with a function that handles and posts an object of arguments passed to it
 				}
 		}
 	};
