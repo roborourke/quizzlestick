@@ -7,21 +7,21 @@
 		<script src="quizzlestick.js"></script>
 	</head>
 	<body>
-		
+
 		<h1>Quickfire</h1>
 		<div class="quickfire"></div>
-		
+
 		<h1>Multiple questions</h1>
 		<div class="multiple"></div>
-		
+
 		<h1>Timed</h1>
 		<div class="timed"></div>
-		
+
 		<h1>Multiple results</h1>
 		<div class="multiple-results"></div>
-		
-		
-		
+
+
+
 		<script>
 			$( '.quickfire' ).quizzlestick( {
 				description: 'Quickfire quizzes!',
@@ -40,7 +40,7 @@
 							{
 								answer: 'Gerrard',
 								total: 300
-								
+
 							},
 							{
 								answer: 'Owen',
@@ -51,7 +51,7 @@
 					}
 				]
 			} );
-			
+
 			$( '.timed' ).quizzlestick( {
 				description: 'Timed quiz with automatic advancement',
 				timelimit: 30000,
@@ -66,7 +66,7 @@
 							},
 							{
 								answer: 'Aguerro'
-								
+
 							},
 							{
 								answer: 'Vivaldi',
@@ -100,17 +100,14 @@
 					}
 				]
 			} );
-			
-			
+
+
 			$( '.multiple-results' ).quizzlestick( {
-				results: {
-					'1': '<p>Maybe your shouldve paid attention in history</p>',
-					'2': '<p>Not too shabby</p>',
-					'3': '<p>Smarty pantaloons!</p>'
-				},
-				onanswer: function() {
-					console.log( this, arguments );	
-				},
+				results: [
+					{ points: 1, template: '<p>Maybe your shouldve paid attention in history</p>' },
+					{ points: 2, template: '<p>Not too shabby</p>' },
+					{ points: 3, template: '<p>Smarty pantaloons!</p>' }
+				],
 				questions: [
 					{
 						question: '<p>Who is older?</p>',
@@ -122,7 +119,7 @@
 							{
 								answer: 'Aguerro',
 								total: 300
-								
+
 							},
 							{
 								answer: 'Vivaldi',
@@ -158,6 +155,6 @@
 				]
 			} );
 		</script>
-		
+
 	</body>
 </html>
