@@ -66,6 +66,7 @@
 						.on( 'timer', 		config.ontimer 		)
 						.on( 'next', 		config.onnext 		)
 						.on( 'prev', 		config.onprev 		)
+						.on( 'ready', 		config.onready  	)
 
 						// starts the timer
 						.on( 'tap click', '.quizzlestick-start', function( e ) {
@@ -121,7 +122,7 @@
 								answers = question.find( '.quizzlestick-answer' ),
 								qresult = question.find( '.quizzlestick-result' ),
 								selected = question.find( '.quizzlestick-selected' ),
-								questionid = questions.index( question ),
+								questionid = question.data( 'id' ),
 								qdata = config.questions[ questionid ],
 								correct;
 
@@ -150,7 +151,7 @@
 								// check answers
 								selected.each( function() {
 									var answer = $( this ),
-										answerid = answers.index( answer ),
+										answerid = answer.data( 'id' ),
 										adata = qdata.answers[ answerid ];
 
 									// store answers
@@ -392,8 +393,8 @@
 								question = $( this ).parents( '.quizzlestick-question' ),
 								answers = question.find( '.quizzlestick-answer' ),
 								questionid = question.data( 'id' ),
-								answerid = answers.index( answer ),
-								qdata = config.questions[ questionid ];
+								answerid = answer.data( 'id' ),
+								qdata = config.questions[ questionid ],
 								adata = qdata.answers[ answerid ];
 
 							if ( question.data( 'answered' ) )
@@ -472,9 +473,10 @@
 									.show()
 									.removeClass( 'quizzlestick-hidden' );
 
-								// move user to results position, either center it or use top
-								// if height is greater than window height use top
-								$( 'html,body' ).animate( { scrollTop: result.offset().top - 30 }, 'slow' );
+								// move user to results position, give the template a little time to render though
+								setTimeout( function() {
+									$( 'html,body' ).animate( { scrollTop: result.offset().top - 30 }, 1000 );
+								}, 300 );
 
 								// allow external plugin/script to hook in
 								config.api.send( {
@@ -573,9 +575,15 @@
 						prev			= quiz.find( '.quizzlestick-prev' ).eq( 0 );
 						finish			= quiz.find( '.quizzlestick-finish' ).eq( 0 );
 
-						// add question indexes incase we mix them up later eg. random
-						questions.each( function( i ) {
-							$( this ).attr( 'data-id', i ).data( 'id', i );
+						// add question & answer IDs incase we mix them up later eg. random sort
+						var qi = 0, ai = 0;
+						$.each( config.questions, function( id, q ) {
+							questions.eq( qi ).attr( 'data-id', id ).data( 'id', id );
+							$.each( q.answers, function( aid ) {
+								questions.eq( qi ).find( '.quizzlestick-answer' ).eq( ai++ ).attr( 'data-id', aid ).data( 'id', aid );
+							} );
+							ai = 0;
+							qi++;
 						} );
 
 						// hide results div
@@ -616,6 +624,9 @@
 						// no questions!!
 
 					}
+
+					// trigger load event
+					quiz.trigger( 'ready', [ config ] );
 
 					return quiz;
 				} );
@@ -730,6 +741,7 @@
 		onnext		: $.noop,
 		onprev		: $.noop,
 		onsend		: $.noop,
+		onready 	: $.noop,
 
 		// question defaults
 		questiondefaults: {
@@ -897,7 +909,7 @@
 				// get from results object
 				if ( $.type( config.results ) === 'array' ) {
 					config.results.sort( function( a, b ) {
-						return a.points > b.points;
+						return parseInt( a.points, 10 ) > parseInt( b.points, 10 );
 					} );
 					for ( var n in config.results ) {
 						if ( config.state.points <= parseInt( config.results[ n ].points, 10 ) ) {
@@ -929,7 +941,7 @@
 
 			// progress bar helpers
 			numquestions: function( context, config ) {
-				return config.questions.length;
+				return config.helpers.getlength( config.questions );
 			},
 			currentquestion: function( context, config ) {
 				return parseInt( config.state.question, 10 ) + 1;
@@ -941,7 +953,7 @@
 				return length;
 			},
 			progresswidth: function( context, config ) {
-				var width = ( 100 / config.questions.length ) * config.state.answers.length;
+				var width = ( 100 / config.helpers.getlength( config.questions ) ) * config.helpers.getlength( config.state.answers );
 				if ( isNaN( width ) )
 					width = 0;
 				return width;
@@ -967,6 +979,18 @@
 			// utilities
 			numberformat: function( num ) {
 				return '' + num;
+			},
+
+			// get array or object length
+			getlength: function( obj ) {
+				var length = 0;
+				if ( $.type( obj ) === 'object' ) {
+					for ( var key in obj )
+						if ( obj.hasOwnProperty( key ) ) length++;
+				} else if ( obj.length ) {
+					length = obj.length;
+				}
+				return length;
 			}
 
 		},
@@ -1051,8 +1075,11 @@
 			if ( ! $.fumanchu.templates[ p1 ] && tpl )
 				$.fumanchu.templates[ p1 ] = tpl;
 
-			// array type
-			if ( $.type( val ) === 'array' ) {
+			// object type w. template
+			if ( $.type( val ) === 'object' && val.template ) {
+				out = t.fumanchu( val.template, val, $.fumanchu.fallback, args );
+			// array|object type
+			} else if ( $.type( val ) === 'array' || $.type( val ) === 'object' ) {
 				$.each( val, function( i, item ) {
 					if ( $.type( item ) === 'object' ) {
 						if ( ! item.template && tpl )
@@ -1061,9 +1088,6 @@
 					}
 					out += t.fumanchu( item, $.fumanchu.context, $.fumanchu.fallback, { list: val, index: i } );
 				} );
-			// object type
-			} else if ( $.type( val ) === 'object' && val.template ) {
-				out = t.fumanchu( val.template, val, $.fumanchu.fallback, args );
 			// function type
 			} else if ( $.type( val ) === 'function' ) {
 				out = val.apply( t, [ $.fumanchu.context, $.fumanchu.fallback, args ] );
